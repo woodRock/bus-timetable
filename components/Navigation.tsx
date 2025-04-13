@@ -21,9 +21,6 @@ export default function Navigation({ active = "home" }: { active?: string }) {
                 <NavLink href="/" active={active === "home"}>
                   Home
                 </NavLink>
-                <NavLink href="/departures" active={active === "departures"}>
-                  Departures
-                </NavLink>
                 <NavLink href="/service-alerts" active={active === "alerts"}>
                   Service Alerts
                 </NavLink>
@@ -35,9 +32,6 @@ export default function Navigation({ active = "home" }: { active?: string }) {
               <div className="flex items-center space-x-1">
                 <MobileNavLink href="/" active={active === "home"}>
                   Home
-                </MobileNavLink>
-                <MobileNavLink href="/departures" active={active === "departures"}>
-                  Departures
                 </MobileNavLink>
                 <MobileNavLink href="/service-alerts" active={active === "alerts"}>
                   Alerts
