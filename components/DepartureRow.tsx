@@ -22,7 +22,9 @@ export default function DepartureRow({ departure }: { departure: Departure }) {
   return (
     <tr class="border-b hover:bg-gray-50 transition-colors duration-150">
       <td class="py-3 px-6 text-left">
-        <span class="font-medium text-metlink-blue">{departure.serviceId}</span>
+        <div class="inline-flex items-center justify-center min-w-8 h-8 bg-metlink-blue text-white rounded-full font-medium">
+          {departure.serviceId}
+        </div>
       </td>
       <td class="py-3 px-6 text-left">
         {departure.destination}

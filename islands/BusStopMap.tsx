@@ -1,5 +1,5 @@
 // islands/BusStopMap.tsx
-// Optimized map with marker clustering for better performance
+// Optimized map with marker clustering and fixed background issue
 
 import { useState, useEffect, useRef } from "preact/hooks";
 
@@ -26,6 +26,7 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
   const mapInstanceRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
   const clusterGroupRef = useRef<any>(null);
+  const tileLayerRef = useRef<any>(null);
   const [retryCount, setRetryCount] = useState<number>(0);
   const [devMode, setDevMode] = useState<boolean>(false);
   const [dynamicLoading, setDynamicLoading] = useState<boolean>(true);
@@ -220,8 +221,8 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
       // Create map centered on Wellington
       const map = window.L.map(mapRef.current).setView([-41.2865, 174.7762], 13);
       
-      // Add OpenStreetMap tile layer
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      // Add OpenStreetMap tile layer and store reference
+      tileLayerRef.current = window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
@@ -262,7 +263,7 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
       markersLayerRef.current.clearLayers();
     }
     
-    if (clusterGroupRef.current) {
+    if (clusterGroupRef.current && mapInstanceRef.current.hasLayer(clusterGroupRef.current)) {
       mapInstanceRef.current.removeLayer(clusterGroupRef.current);
       clusterGroupRef.current.clearLayers();
     }
@@ -273,7 +274,19 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
     if (!mapInstanceRef.current) return;
     
     // Clear all markers first
-    clearMap();
+    if (markersLayerRef.current) {
+      markersLayerRef.current.clearLayers();
+    }
+    
+    // Remove cluster group if it's on the map
+    if (clusterGroupRef.current && mapInstanceRef.current.hasLayer(clusterGroupRef.current)) {
+      mapInstanceRef.current.removeLayer(clusterGroupRef.current);
+    }
+    
+    // Make sure the base tile layer is still visible
+    if (tileLayerRef.current && !mapInstanceRef.current.hasLayer(tileLayerRef.current)) {
+      tileLayerRef.current.addTo(mapInstanceRef.current);
+    }
     
     // Add filtered stops to the regular layer (not clustered)
     updateMapWithStops(filteredStops);
@@ -291,6 +304,11 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
     
     // Clear existing markers
     clearMap();
+    
+    // Make sure the base tile layer is still visible
+    if (tileLayerRef.current && !mapInstanceRef.current.hasLayer(tileLayerRef.current)) {
+      tileLayerRef.current.addTo(mapInstanceRef.current);
+    }
     
     if (dynamicLoading) {
       // With dynamic loading enabled, we'll add markers based on the current viewport
@@ -605,83 +623,83 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
                 <div class="font-medium">{stop.stop_name}</div>
                 <div class="text-sm text-gray-600">Stop ID: {stop.stop_id}</div>
               </div>
-            ))}
+              ))}
             
-            {stops.filter(stop => 
-              stop.stop_id.toLowerCase().includes(search.toLowerCase()) || 
-              stop.stop_name.toLowerCase().includes(search.toLowerCase())
-            ).length === 0 && (
-              <div class="p-4 text-center text-gray-500">
-                No stops found matching "{search}"
+              {stops.filter(stop => 
+                stop.stop_id.toLowerCase().includes(search.toLowerCase()) || 
+                stop.stop_name.toLowerCase().includes(search.toLowerCase())
+              ).length === 0 && (
+                <div class="p-4 text-center text-gray-500">
+                  No stops found matching "{search}"
+                </div>
+              )}
+            </div>
+          )}
+  
+          <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
+            <p class="flex items-start">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                <strong>Performance Tips:</strong> Use search to find specific stops. When "Show All Stops" is enabled, 
+                try the "Dynamic Loading" option to only show stops in your current view, or "Clustering" to group nearby stops together.
+              </span>
+            </p>
+          </div>
+  
+          {/* Map container */}
+          <div 
+            ref={mapRef}
+            class="h-96 rounded-lg border border-gray-300 bg-gray-100"
+          >
+            {!mapInstanceRef.current && (
+              <div class="flex justify-center items-center h-full">
+                <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-metlink-blue"></div>
+                <span class="ml-2 text-gray-600">Loading map...</span>
               </div>
             )}
           </div>
-        )}
-
-        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm text-yellow-700">
-          <p class="flex items-start">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>
-              <strong>Performance Tips:</strong> Use search to find specific stops. When "Show All Stops" is enabled, 
-              try the "Dynamic Loading" option to only show stops in your current view, or "Clustering" to group nearby stops together.
-            </span>
-          </p>
-        </div>
-
-        {/* Map container */}
-        <div 
-          ref={mapRef}
-          class="h-96 rounded-lg border border-gray-300 bg-gray-100"
-        >
-          {!mapInstanceRef.current && (
-            <div class="flex justify-center items-center h-full">
-              <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-metlink-blue"></div>
-              <span class="ml-2 text-gray-600">Loading map...</span>
+  
+          {/* Selected stop information */}
+          {selectedStop && (
+            <div class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 class="font-bold text-lg text-metlink-blue">{selectedStop.stop_name}</h3>
+              <p class="mb-2">Stop ID: <span class="font-medium">{selectedStop.stop_id}</span></p>
+              
+              <div class="flex flex-wrap gap-2 mt-4">
+                <a 
+                  href={`/departures/${selectedStop.stop_id}`}
+                  class="px-4 py-2 bg-metlink-blue text-white rounded hover:bg-metlink-dark-blue transition-colors duration-300 inline-flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  View all departures
+                </a>
+                
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${selectedStop.stop_lat},${selectedStop.stop_lon}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors duration-300 inline-flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Open in Google Maps
+                </a>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Selected stop information */}
-        {selectedStop && (
-          <div class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 class="font-bold text-lg text-metlink-blue">{selectedStop.stop_name}</h3>
-            <p class="mb-2">Stop ID: <span class="font-medium">{selectedStop.stop_id}</span></p>
-            
-            <div class="flex flex-wrap gap-2 mt-4">
-              <a 
-                href={`/departures/${selectedStop.stop_id}`}
-                class="px-4 py-2 bg-metlink-blue text-white rounded hover:bg-metlink-dark-blue transition-colors duration-300 inline-flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-                View all departures
-              </a>
-              
-              <a 
-                href={`https://www.google.com/maps/search/?api=1&query=${selectedStop.stop_lat},${selectedStop.stop_lon}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors duration-300 inline-flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                Open in Google Maps
-              </a>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
-  );
-}
-
-// Add typing for Leaflet library
-declare global {
-  interface Window {
-    L: any;
+    );
   }
-}
+  
+  // Add typing for Leaflet library
+  declare global {
+    interface Window {
+      L: any;
+    }
+  }

@@ -72,7 +72,7 @@ export default function DepartureBoard({
     
     try {
       const limitParam = limit ? `&limit=${limit}` : '';
-      const response = await fetch(`/api/departures?stop=${stopId}&service=${serviceId}${limitParam}`);
+      const response = await fetch(`/api/departures?stopId=${stopId}&serviceId=${serviceId}${limitParam}`);
       
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
