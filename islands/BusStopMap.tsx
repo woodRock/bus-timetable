@@ -33,19 +33,17 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
 
   // Load bus stops on mount
   useEffect(() => {
-    // Initialize map
     initMap();
-    
+  
     if (initialStops.length === 0) {
       fetchBusStops();
     } else {
       setStops(initialStops);
-      // Still fetch stops in the background to get the full list
       fetchBusStops(false);
     }
-
+  
     return () => {
-      // Clean up map instance if needed
+      console.log("Cleaning up map instance...");
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
       }
@@ -59,14 +57,13 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
         stop.stop_id.toLowerCase().includes(search.toLowerCase()) || 
         stop.stop_name.toLowerCase().includes(search.toLowerCase())
       );
-      setFilteredStops(filtered.slice(0, 100)); // Limit search results for performance
+      setFilteredStops(filtered.slice(0, 100));
     } else if (showAllStops) {
-      // When showing all stops, we'll do it differently - through clustering
       setFilteredStops([]);
       updateAllStopsCluster();
     } else {
       setFilteredStops([]);
-      clearMap();
+      resetMap(); // Call a new function to reset the map
     }
   }, [search, showAllStops]);
 
@@ -88,33 +85,32 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !dynamicLoading) return;
-
+  
     function updateVisibleStops() {
+      // Only update visible stops if "Show All Stops" is enabled and there’s no active search
       if (!showAllStops || search) return;
-      
-      // Get current map bounds
+  
       const bounds = map.getBounds();
-      
-      // Filter stops to only those in the current viewport
       const visibleStops = stops.filter(stop => {
         return bounds.contains([stop.stop_lat, stop.stop_lon]);
       });
-      
-      // Limit to a reasonable number
       const limitedStops = visibleStops.slice(0, 300);
       updateMapWithStops(limitedStops);
+  
+      // Ensure the tile layer is still visible after the update
+      if (tileLayerRef.current && !map.hasLayer(tileLayerRef.current)) {
+        tileLayerRef.current.addTo(map);
+        tileLayerRef.current.redraw();
+      }
     }
-
-    // Add event listener for moveend
+  
     map.on('moveend', updateVisibleStops);
-    
-    // Initial update
+  
     if (showAllStops && !search) {
       updateVisibleStops();
     }
-    
+  
     return () => {
-      // Remove event listener on cleanup
       map.off('moveend', updateVisibleStops);
     };
   }, [mapInstanceRef.current, stops, showAllStops, search, dynamicLoading]);
@@ -169,67 +165,58 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
   // Initialize Leaflet map
   async function initMap() {
     if (!mapRef.current) return;
-    
+  
     try {
       // Check if Leaflet is already loaded
       if (typeof window.L === 'undefined') {
-        // Dynamically load Leaflet CSS
         const cssLink = document.createElement('link');
         cssLink.rel = 'stylesheet';
         cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
         cssLink.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
         cssLink.crossOrigin = '';
         document.head.appendChild(cssLink);
-
-        // Dynamically load Leaflet JS
+  
         const script = document.createElement('script');
         script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
         script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
         script.crossOrigin = '';
         document.head.appendChild(script);
-
-        // Wait for script to load
+  
         await new Promise((resolve) => {
           script.onload = resolve;
         });
       }
-
-      // Load MarkerCluster plugin
+  
       if (typeof window.L.markerClusterGroup === 'undefined') {
-        // Load MarkerCluster CSS
         const markerClusterCss = document.createElement('link');
         markerClusterCss.rel = 'stylesheet';
         markerClusterCss.href = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css';
         document.head.appendChild(markerClusterCss);
-
+  
         const markerClusterDefaultCss = document.createElement('link');
         markerClusterDefaultCss.rel = 'stylesheet';
         markerClusterDefaultCss.href = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css';
         document.head.appendChild(markerClusterDefaultCss);
-
-        // Load MarkerCluster JS
+  
         const markerClusterScript = document.createElement('script');
         markerClusterScript.src = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js';
         document.head.appendChild(markerClusterScript);
-
-        // Wait for script to load
+  
         await new Promise((resolve) => {
           markerClusterScript.onload = resolve;
         });
       }
-
-      // Create map centered on Wellington
+  
       const map = window.L.map(mapRef.current).setView([-41.2865, 174.7762], 13);
-      
-      // Add OpenStreetMap tile layer and store reference
+  
+      // Add OpenStreetMap tile layer with explicit zIndex
       tileLayerRef.current = window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        zIndex: 1, // Ensure the tile layer is at the bottom
       }).addTo(map);
-
-      // Create a layer group for markers
-      markersLayerRef.current = window.L.layerGroup().addTo(map);
-      
-      // Create a cluster group for all stops
+  
+      // Ensure other layers have higher z-indexes
+      markersLayerRef.current = window.L.layerGroup({ zIndex: 10 }).addTo(map);
       clusterGroupRef.current = window.L.markerClusterGroup({
         maxClusterRadius: 40,
         spiderfyOnMaxZoom: true,
@@ -238,141 +225,236 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
         chunkedLoading: true,
         chunkProgress: function(processed, total) {
           console.log(`Loaded ${processed}/${total} markers`);
-        }
+        },
+        zIndex: 15, // Cluster layer above the tile layer
       });
-
-      // Store map instance
+  
       mapInstanceRef.current = map;
-
-      // Add stops to map if available
+  
       if (initialStops.length > 0) {
-        // Initialize with initial stops
         setFilteredStops(initialStops.slice(0, 50));
       }
+  
+      // Force map to re-render
+      map.invalidateSize();
     } catch (err) {
       console.error('Error initializing map:', err);
       setError('Failed to load map. Please refresh the page.');
     }
-  }
+  }  
+
+  function resetMap() {
+    if (!mapInstanceRef.current) return;
   
+    console.log("Resetting map to initial state...");
+  
+    clearMap();
+  
+    const isLeafletContainer = mapRef.current?.classList.contains('leaflet-container');
+    console.log("Is div a Leaflet container?", isLeafletContainer);
+  
+    if (!isLeafletContainer || !mapInstanceRef.current) {
+      console.log("Reinitializing map because div is not a Leaflet container or map instance is missing...");
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      initMap();
+      hasReinitializedRef.current = false; // Reset the flag
+    }
+  
+    if (tileLayerRef.current) {
+      if (!mapInstanceRef.current.hasLayer(tileLayerRef.current)) {
+        console.log("Tile layer missing during reset, adding it back...");
+        tileLayerRef.current.addTo(mapInstanceRef.current);
+      } else {
+        console.log("Tile layer is present during reset, forcing redraw...");
+        tileLayerRef.current.redraw();
+      }
+    }
+  
+    mapInstanceRef.current.setView([-41.2865, 174.7762], 13);
+    mapInstanceRef.current.invalidateSize();
+  }
+
   // Clear all markers from the map
   function clearMap() {
     if (!mapInstanceRef.current) return;
-    
+  
+    // Clear markers layer
     if (markersLayerRef.current) {
       markersLayerRef.current.clearLayers();
     }
-    
-    if (clusterGroupRef.current && mapInstanceRef.current.hasLayer(clusterGroupRef.current)) {
-      mapInstanceRef.current.removeLayer(clusterGroupRef.current);
+  
+    // Clear cluster group if it exists
+    if (clusterGroupRef.current) {
+      if (mapInstanceRef.current.hasLayer(clusterGroupRef.current)) {
+        mapInstanceRef.current.removeLayer(clusterGroupRef.current);
+      }
       clusterGroupRef.current.clearLayers();
     }
-  }
-
-  // Update map with filtered stops (search results)
-  function updateMapWithFilteredStops() {
-    if (!mapInstanceRef.current) return;
-    
-    // Clear all markers first
-    if (markersLayerRef.current) {
-      markersLayerRef.current.clearLayers();
-    }
-    
-    // Remove cluster group if it's on the map
-    if (clusterGroupRef.current && mapInstanceRef.current.hasLayer(clusterGroupRef.current)) {
-      mapInstanceRef.current.removeLayer(clusterGroupRef.current);
-    }
-    
-    // Make sure the base tile layer is still visible
-    if (tileLayerRef.current && !mapInstanceRef.current.hasLayer(tileLayerRef.current)) {
-      tileLayerRef.current.addTo(mapInstanceRef.current);
-    }
-    
-    // Add filtered stops to the regular layer (not clustered)
-    updateMapWithStops(filteredStops);
-    
-    // Fit map to show all filtered stops
-    if (filteredStops.length > 0) {
-      const bounds = window.L.latLngBounds(filteredStops.map(stop => [stop.stop_lat, stop.stop_lon]));
-      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
-    }
-  }
   
+    // Ensure the tile layer is still present
+    if (tileLayerRef.current) {
+      if (!mapInstanceRef.current.hasLayer(tileLayerRef.current)) {
+        console.log("Tile layer missing after clearing map, adding it back...");
+        tileLayerRef.current.addTo(mapInstanceRef.current);
+      } else {
+        console.log("Tile layer is present, forcing redraw...");
+        tileLayerRef.current.redraw();
+      }
+    } else {
+      console.log("Tile layer reference is undefined, reinitializing...");
+      tileLayerRef.current = window.L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png', {
+        attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://www.openstreetmap.org/copyright">ODbL</a>.',
+        zIndex: 1,
+        subdomains: 'abcd',
+      }).addTo(mapInstanceRef.current);
+    }
+  
+    // Force map re-render
+    mapInstanceRef.current.invalidateSize();
+  }  
+  const hasReinitializedRef = useRef(false);
+
+  function updateMapWithFilteredStops() {
+    if (!mapRef.current) return;
+
+    console.log("Updating map with filtered stops...");
+
+    const isLeafletContainer = mapRef.current.classList.contains('leaflet-container');
+    console.log("Is div a Leaflet container?", isLeafletContainer);
+
+    if (!isLeafletContainer || !mapInstanceRef.current) {
+        console.log("Reinitializing map because div is not a Leaflet container or map instance is missing...");
+        if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        }
+        initMap();
+        hasReinitializedRef.current = false; // Reset the flag to allow future reinitializations
+    }
+
+    console.log("Proceeding with map update...");
+
+    clearMap();
+
+    if (tileLayerRef.current) {
+        if (!mapInstanceRef.current.hasLayer(tileLayerRef.current)) {
+        console.log("Tile layer missing, adding it back...");
+        tileLayerRef.current.addTo(mapInstanceRef.current);
+        } else {
+        console.log("Tile layer is already on the map, forcing redraw...");
+        mapInstanceRef.current.removeLayer(tileLayerRef.current);
+        tileLayerRef.current.addTo(mapInstanceRef.current);
+        tileLayerRef.current.redraw();
+        }
+
+        tileLayerRef.current.on('tileload', () => {
+        console.log("Tile loaded successfully");
+        });
+        tileLayerRef.current.on('tileerror', (error) => {
+        console.error("Tile loading error:", error);
+        });
+    } else {
+        console.log("Tile layer reference is undefined, reinitializing...");
+        tileLayerRef.current = window.L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png', {
+        attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://www.openstreetmap.org/copyright">ODbL</a>.',
+        zIndex: 1,
+        subdomains: 'abcd',
+        }).addTo(mapInstanceRef.current);
+
+        tileLayerRef.current.on('tileload', () => {
+        console.log("Tile loaded successfully (reinitialized)");
+        });
+        tileLayerRef.current.on('tileerror', (error) => {
+        console.error("Tile loading error (reinitialized):", error);
+        });
+    }
+
+    mapInstanceRef.current.invalidateSize();
+    updateMapWithStops(filteredStops);
+    }
+
   // Update map with all stops using clustering
   function updateAllStopsCluster() {
     if (!mapInstanceRef.current || !clusterGroupRef.current) return;
-    
+
     // Clear existing markers
     clearMap();
-    
-    // Make sure the base tile layer is still visible
-    if (tileLayerRef.current && !mapInstanceRef.current.hasLayer(tileLayerRef.current)) {
-      tileLayerRef.current.addTo(mapInstanceRef.current);
-    }
-    
-    if (dynamicLoading) {
-      // With dynamic loading enabled, we'll add markers based on the current viewport
-      const bounds = mapInstanceRef.current.getBounds();
-      const visibleStops = stops.filter(stop => 
-        bounds.contains([stop.stop_lat, stop.stop_lon])
-      ).slice(0, 300);
-      
-      updateMapWithStops(visibleStops);
+
+    // Ensure the tile layer is added to the map
+    if (tileLayerRef.current) {
+        if (!mapInstanceRef.current.hasLayer(tileLayerRef.current)) {
+        tileLayerRef.current.addTo(mapInstanceRef.current);
+        }
     } else {
-      // Create a custom icon for clustered bus stops
-      const busStopIcon = window.L.divIcon({
+        // Reinitialize tile layer if it's undefined
+        tileLayerRef.current = window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mapInstanceRef.current);
+    }
+
+    if (dynamicLoading) {
+        // With dynamic loading enabled, we'll add markers based on the current viewport
+        const bounds = mapInstanceRef.current.getBounds();
+        const visibleStops = stops.filter(stop => 
+        bounds.contains([stop.stop_lat, stop.stop_lon])
+        ).slice(0, 300);
+
+        updateMapWithStops(visibleStops);
+    } else {
+        // Create a custom icon for clustered bus stops
+        const busStopIcon = window.L.divIcon({
         html: `<div class="bus-stop-marker flex items-center justify-center text-white bg-metlink-blue rounded-full h-5 w-5 border-2 border-white shadow-md text-xs font-bold">B</div>`,
         className: '',
         iconSize: [20, 20],
         iconAnchor: [10, 10]
-      });
-      
-      // Add all stops to the cluster group
-      // We'll process them in chunks to avoid freezing the UI
-      const chunkSize = 500;
-      let processedCount = 0;
-      
-      // Function to process a chunk of stops
-      function processChunk() {
+        });
+
+        // Add all stops to the cluster group
+        const chunkSize = 500;
+        let processedCount = 0;
+
+        function processChunk() {
         const chunk = stops.slice(processedCount, processedCount + chunkSize);
         processedCount += chunk.length;
-        
+
         const markers = chunk.map(stop => {
-          const marker = window.L.marker([stop.stop_lat, stop.stop_lon], { icon: busStopIcon })
+            const marker = window.L.marker([stop.stop_lat, stop.stop_lon], { icon: busStopIcon })
             .bindPopup(`
-              <div class="bus-stop-popup">
+                <div class="bus-stop-popup">
                 <h3 class="font-bold">${stop.stop_name}</h3>
                 <p>Stop ID: ${stop.stop_id}</p>
                 <a href="/departures/${stop.stop_id}" class="text-metlink-blue hover:underline mt-2 inline-block">
-                  View all departures
+                    View all departures
                 </a>
-              </div>
+                </div>
             `);
-          
-          marker.on('click', () => {
+
+            marker.on('click', () => {
             setSelectedStop(stop);
-          });
-          
-          return marker;
+            });
+
+            return marker;
         });
-        
+
         // Add markers to cluster group
         clusterGroupRef.current.addLayers(markers);
-        
+
         // If there are more stops to process, schedule the next chunk
         if (processedCount < stops.length) {
-          setTimeout(processChunk, 10); // Small delay to keep UI responsive
+            setTimeout(processChunk, 10); // Small delay to keep UI responsive
         } else {
-          // All stops processed, add the cluster group to the map
-          mapInstanceRef.current.addLayer(clusterGroupRef.current);
+            // All stops processed, add the cluster group to the map
+            mapInstanceRef.current.addLayer(clusterGroupRef.current);
         }
-      }
-      
-      // Start processing chunks
-      processChunk();
+        }
+
+        // Start processing chunks
+        processChunk();
     }
-  }
-  
+  }  
   // Update map with specific stops (used for search results and dynamic loading)
   function updateMapWithStops(stopsToShow: BusStop[]) {
     if (!mapInstanceRef.current) return;
@@ -651,15 +733,16 @@ export default function BusStopMap({ initialStops = [] }: BusStopMapProps) {
           {/* Map container */}
           <div 
             ref={mapRef}
-            class="h-96 rounded-lg border border-gray-300 bg-gray-100"
-          >
+            class="h-96 rounded-lg border border-gray-300"
+            style={{ position: 'relative', zIndex: 0 }} // Ensure proper positioning
+            >
             {!mapInstanceRef.current && (
-              <div class="flex justify-center items-center h-full">
+                <div class="flex justify-center items-center h-full">
                 <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-metlink-blue"></div>
                 <span class="ml-2 text-gray-600">Loading map...</span>
-              </div>
+                </div>
             )}
-          </div>
+            </div>
   
           {/* Selected stop information */}
           {selectedStop && (

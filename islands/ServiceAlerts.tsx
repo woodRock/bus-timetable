@@ -69,7 +69,7 @@ export default function ServiceAlerts({ alerts }: ServiceAlertsProps) {
             onClick={() => setFilter('all')}
             class={`px-4 py-2 rounded-md transition-colors ${
               filter === 'all' 
-                ? 'bg-metlink-blue text-black' 
+                ? 'bg-metlink-blue text-white' 
                 : 'bg-gray-200 hover:bg-gray-300'
             }`}
           >
@@ -79,7 +79,7 @@ export default function ServiceAlerts({ alerts }: ServiceAlertsProps) {
             onClick={() => setFilter('bus')}
             class={`px-4 py-2 rounded-md transition-colors ${
               filter === 'bus' 
-                ? 'bg-metlink-blue text-black' 
+                ? 'bg-metlink-blue text-white' 
                 : 'bg-gray-200 hover:bg-gray-300'
             }`}
           >
@@ -89,7 +89,7 @@ export default function ServiceAlerts({ alerts }: ServiceAlertsProps) {
             onClick={() => setFilter('train')}
             class={`px-4 py-2 rounded-md transition-colors ${
               filter === 'train' 
-                ? 'bg-metlink-blue text-black' 
+                ? 'bg-metlink-blue text-white' 
                 : 'bg-gray-200 hover:bg-gray-300'
             }`}
           >
@@ -99,7 +99,7 @@ export default function ServiceAlerts({ alerts }: ServiceAlertsProps) {
             onClick={() => setFilter('ferry')}
             class={`px-4 py-2 rounded-md transition-colors ${
               filter === 'ferry' 
-                ? 'bg-metlink-blue text-black' 
+                ? 'bg-metlink-blue text-white' 
                 : 'bg-gray-200 hover:bg-gray-300'
             }`}
           >
