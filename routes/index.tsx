@@ -15,10 +15,8 @@ interface HomePageData {
 export const handler: Handlers<HomePageData> = {
   async GET(req, ctx) {
     try {
-      // We'll just get a small sample of stops initially to make the page load faster
-      // The full list will be fetched via API when needed
       const stops = await getBusStops();
-      const sampleStops = stops.slice(0, 50); // Just get 50 initial stops
+      const sampleStops = stops.slice(0, 50);
       
       return ctx.render({
         initialStops: sampleStops
@@ -55,6 +53,24 @@ export default function Home({ data }: PageProps<HomePageData>) {
             </p>
           </header>
           
+          {/* Moved "How to use" Instructions to the Top */}
+          <div class="mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+              <div class="flex items-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-metlink-green mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <h2 class="text-xl font-semibold text-gray-800">How to use</h2>
+              </div>
+              <ol class="list-decimal pl-5 space-y-2 text-gray-700">
+                <li>Find your bus stop number on the map below</li>
+                <li>Enter the stop number in the search form</li>
+                <li>Enter the service number you want to check</li>
+                <li>Click "View Departures" to see real-time arrival information</li>
+              </ol>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Search Form */}
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -167,48 +183,6 @@ export default function Home({ data }: PageProps<HomePageData>) {
                 </div>
               </div>
             </div>
-            
-            {/* About Section */}
-            <div>
-              <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <div class="flex items-center mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-metlink-blue mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h2 class="text-xl font-semibold text-gray-800">About this app</h2>
-                </div>
-                <p class="text-gray-700 leading-relaxed">
-                  This application displays real-time bus departure information for Wellington, New Zealand, 
-                  using data from the Metlink API. Enter a stop ID and service number to see when your bus will arrive.
-                </p>
-                <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                  <div class="flex">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400 mr-2 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p class="text-sm text-blue-700">
-                      This is not an official Metlink service. The app uses the public Metlink API to provide real-time information.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Simple Usage Instructions */}
-              <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <div class="flex items-center mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-metlink-green mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                  <h2 class="text-xl font-semibold text-gray-800">How to use</h2>
-                </div>
-                <ol class="list-decimal pl-5 space-y-2 text-gray-700">
-                  <li>Find your bus stop number on the map below</li>
-                  <li>Enter the stop number in the search form</li>
-                  <li>Enter the service number you want to check</li>
-                  <li>Click "View Departures" to see real-time arrival information</li>
-                </ol>
-              </div>
-            </div>
           </div>
           
           {/* Bus Stop Map */}
@@ -221,6 +195,32 @@ export default function Home({ data }: PageProps<HomePageData>) {
               <p>{error}</p>
             </div>
           )}
+          
+          {/* About Section (already at the bottom) */}
+          <div class="mt-12">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+              <div class="flex items-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-metlink-blue mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h2 class="text-xl font-semibold text-gray-800">About this app</h2>
+              </div>
+              <p class="text-gray-700 leading-relaxed">
+                This application displays real-time bus departure information for Wellington, New Zealand, 
+                using data from the Metlink API. Enter a stop ID and service number to see when your bus will arrive.
+              </p>
+              <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <div class="flex">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400 mr-2 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p class="text-sm text-blue-700">
+                    This is not an official Metlink service. The app uses the public Metlink API to provide real-time information.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
           
           <footer class="mt-12 text-center text-sm text-gray-500 border-t border-gray-200 pt-6">
             <p>Data provided by Metlink Wellington. This is not an official Metlink service.</p>
