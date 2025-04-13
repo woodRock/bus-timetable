@@ -4,24 +4,36 @@
 
 import * as $_404 from "./routes/_404.tsx";
 import * as $_app from "./routes/_app.tsx";
+import * as $api_alerts from "./routes/api/alerts.ts";
 import * as $api_departures from "./routes/api/departures.ts";
+import * as $api_stops from "./routes/api/stops.ts";
+import * as $departures_stop_ from "./routes/departures/[stop].tsx";
 import * as $departures_stop_service_ from "./routes/departures/[stop]/[service].tsx";
 import * as $departures_index from "./routes/departures/index.tsx";
 import * as $index from "./routes/index.tsx";
+import * as $service_alerts from "./routes/service-alerts.tsx";
+import * as $BusStopMap from "./islands/BusStopMap.tsx";
 import * as $DepartureBoard from "./islands/DepartureBoard.tsx";
+import * as $ServiceAlerts from "./islands/ServiceAlerts.tsx";
 import type { Manifest } from "$fresh/server.ts";
 
 const manifest = {
   routes: {
     "./routes/_404.tsx": $_404,
     "./routes/_app.tsx": $_app,
+    "./routes/api/alerts.ts": $api_alerts,
     "./routes/api/departures.ts": $api_departures,
+    "./routes/api/stops.ts": $api_stops,
+    "./routes/departures/[stop].tsx": $departures_stop_,
     "./routes/departures/[stop]/[service].tsx": $departures_stop_service_,
     "./routes/departures/index.tsx": $departures_index,
     "./routes/index.tsx": $index,
+    "./routes/service-alerts.tsx": $service_alerts,
   },
   islands: {
+    "./islands/BusStopMap.tsx": $BusStopMap,
     "./islands/DepartureBoard.tsx": $DepartureBoard,
+    "./islands/ServiceAlerts.tsx": $ServiceAlerts,
   },
   baseUrl: import.meta.url,
 } satisfies Manifest;

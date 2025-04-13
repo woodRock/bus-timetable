@@ -1,74 +1,51 @@
 // components/DepartureRow.tsx
-// Component to display an individual departure
+// Component for displaying a single departure in the table
 
-import { JSX } from "preact";
 import { Departure } from "../utils/metlink.ts";
 
-export default function DepartureRow({ departure }: { departure: Departure }): JSX.Element {
-  // Helper function to determine row style based on status
-  const getRowStyle = () => {
-    if (departure.status === "cancelled") {
-      return "bg-red-50 hover:bg-red-100";
-    } 
-    
-    // Highlight imminent departures
-    if (departure.minutesToArrival !== null) {
-      if (departure.minutesToArrival <= 5) {
-        return "bg-green-50 hover:bg-green-100";
-      }
+export default function DepartureRow({ departure }: { departure: Departure }) {
+  // Status color classes
+  const getStatusClasses = (status: string): string => {
+    switch (status) {
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      case "delayed":
+        return "bg-amber-100 text-amber-800";
+      case "onTime":
+      case "early":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
-    
-    return "hover:bg-blue-50";
   };
-  
-  // Helper function to determine time display style
-  const getTimeStyle = () => {
-    if (departure.status === "cancelled") {
-      return "inline-block py-1 px-3 bg-red-100 text-red-700 rounded-full font-medium";
-    }
-    
-    if (departure.displayTime === "Due") {
-      return "inline-block py-1 px-3 bg-green-100 text-green-700 rounded-full font-medium";
-    }
-    
-    if (departure.minutesToArrival !== null && departure.minutesToArrival <= 10) {
-      return "inline-block py-1 px-3 bg-blue-100 text-blue-700 rounded-full font-medium";
-    }
-    
-    return "font-medium";
-  };
-  
+
   return (
-    <tr class={`transition-colors duration-200 ${getRowStyle()}`}>
-      <td class="py-3 px-6 border-b">
-        <span class="bg-black text-white rounded-md py-1 px-3 text-sm font-bold shadow-sm">
-          {departure.serviceId}
-        </span>
+    <tr class="border-b hover:bg-gray-50 transition-colors duration-150">
+      <td class="py-3 px-6 text-left">
+        <span class="font-medium text-metlink-blue">{departure.serviceId}</span>
       </td>
-      <td class="py-3 px-6 border-b">
+      <td class="py-3 px-6 text-left">
+        {departure.destination}
+      </td>
+      <td class="py-3 px-6 text-left">
         <div class="flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-          {departure.destination}
+          <span class={`px-2 py-1 text-xs rounded ${getStatusClasses(departure.status)}`}>
+            {departure.status === "cancelled" ? "Cancelled" : departure.displayTime}
+          </span>
         </div>
       </td>
-      <td class="py-3 px-6 border-b">
-        <span class={getTimeStyle()}>
-          {departure.status === "cancelled" ? "Cancelled" : departure.displayTime}
-        </span>
-      </td>
-      <td class="py-3 px-6 border-b text-center">
+      <td class="py-3 px-6 text-center">
         {departure.wheelchairAccessible ? (
-          <span 
-            title="Wheelchair Accessible" 
-            aria-label="Wheelchair Accessible"
-            class="text-xl"
-          >
-            ♿
+          <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+            <span class="inline-flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14a7 7 0 01-7 7m7-7a7 7 0 00-7-7m7 7H3m7 7a7 7 0 01-7-7m7 7a7 7 0 007-7m-7 7v-7m0 7V3" />
+              </svg>
+              Accessible
+            </span>
           </span>
         ) : (
-          <span class="text-gray-400 text-sm">—</span>
+          <span class="text-gray-400 text-xs">Not specified</span>
         )}
       </td>
     </tr>

@@ -16,6 +16,88 @@ export interface Departure {
 }
 
 /**
+ * Interface for bus stop information
+ */
+export interface BusStop {
+  stop_id: string;
+  stop_name: string;
+  stop_lat: number;
+  stop_lon: number;
+}
+
+/**
+ * Interface for service alert object structure
+ */
+export interface ServiceAlert {
+  id: string;
+  alert: {
+    active_period?: Array<{
+      start?: number;
+      end?: number;
+    }>;
+    effect?: string;
+    cause?: string;
+    severity_level?: string;
+    header_text?: {
+      translation?: Array<{
+        language?: string;
+        text?: string;
+      }>;
+    };
+    description_text?: {
+      translation?: Array<{
+        language?: string;
+        text?: string;
+      }>;
+    };
+    url?: {
+      translation?: Array<{
+        language?: string;
+        text?: string;
+      }>;
+    };
+    informed_entity?: Array<{
+      route_id?: string;
+      route_type?: number;
+      stop_id?: string;
+      trip?: {
+        trip_id?: string;
+        route_id?: number;
+        direction_id?: number;
+        start_time?: string;
+        start_date?: string;
+        schedule_relationship?: string;
+      };
+    }>;
+    image?: {
+      localized_image?: Array<{
+        url?: string;
+        media?: string;
+      }>;
+    };
+    image_alternative_text?: {
+      translation?: Array<{
+        language?: string;
+        text?: string;
+      }>;
+    };
+  };
+  timestamp?: string;
+}
+
+/**
+ * Interface for service alerts response
+ */
+export interface ServiceAlertsResponse {
+  header: {
+    gtfsRealtimeVersion: string;
+    incrementality: number;
+    timestamp: number;
+  };
+  entity: ServiceAlert[];
+}
+
+/**
  * Makes an HTTP request to the Metlink API to retrieve departure board data for a stop
  */
 export async function getDepartureBoard(stopId: string): Promise<any> {
@@ -39,6 +121,73 @@ export async function getDepartureBoard(stopId: string): Promise<any> {
     throw new Error("Forbidden. Please check your API key.");
   } else {
     throw new Error(`Unknown error: ${response.status}. Please check if stop ID ${stopId} exists.`);
+  }
+}
+
+/**
+ * Makes an HTTP request to the Metlink API to retrieve service alerts
+ */
+export async function getServiceAlerts(): Promise<ServiceAlertsResponse> {
+  const requestUrl = "https://api.opendata.metlink.org.nz/v1/gtfs-rt/servicealerts";
+  const apiKey = getMetlinkApiKey();
+  
+  if (!apiKey) {
+    throw new Error("Metlink API key is not set. Please check your .env file.");
+  }
+  
+  const response = await fetch(requestUrl, {
+    headers: {
+      "x-api-key": apiKey,
+      "accept": "application/json"
+    }
+  });
+  
+  if (response.status === 200) {
+    return await response.json();
+  } else if (response.status === 403) {
+    throw new Error("Forbidden. Please check your API key.");
+  } else {
+    throw new Error(`Unknown error: ${response.status}`);
+  }
+}
+
+/**
+ * Makes an HTTP request to the Metlink API to retrieve bus stops
+ */
+export async function getBusStops(): Promise<BusStop[]> {
+  const requestUrl = "https://api.opendata.metlink.org.nz/v1/gtfs/stops";
+  const apiKey = getMetlinkApiKey();
+  
+  if (!apiKey) {
+    throw new Error("Metlink API key is not set. Please check your .env file.");
+  }
+  
+  const response = await fetch(requestUrl, {
+    headers: {
+      "x-api-key": apiKey,
+      "accept": "application/json"
+    }
+  });
+  
+  if (response.status === 200) {
+    const data = await response.json();
+    
+    // Process and filter stops
+    return data
+      .filter((stop: any) => 
+        // Filter out stops without proper coordinates or IDs
+        stop.stop_lat && stop.stop_lon && stop.stop_id
+      )
+      .map((stop: any) => ({
+        stop_id: stop.stop_id,
+        stop_name: stop.stop_name,
+        stop_lat: parseFloat(stop.stop_lat),
+        stop_lon: parseFloat(stop.stop_lon)
+      }));
+  } else if (response.status === 403) {
+    throw new Error("Forbidden. Please check your API key.");
+  } else {
+    throw new Error(`Unknown error: ${response.status}`);
   }
 }
 
@@ -117,4 +266,59 @@ export function filterDepartures(
   console.log(`Found ${filtered.length} departures for service ${serviceId}`);
   
   return limit ? filtered.slice(0, limit) : filtered;
+}
+
+/**
+ * Filters alerts by mode of transport
+ * @param alerts The list of service alerts
+ * @param mode The mode to filter by ('bus', 'train', 'ferry', or 'all')
+ */
+export function filterAlertsByMode(
+  alerts: ServiceAlert[], 
+  mode: 'bus' | 'train' | 'ferry' | 'all'
+): ServiceAlert[] {
+  if (mode === 'all') return alerts;
+  
+  return alerts.filter(alert => {
+    const entities = alert.alert?.informed_entity || [];
+    return entities.some(entity => {
+      if (mode === 'bus') return entity.route_type === 3;
+      if (mode === 'train') return entity.route_type === 2;
+      if (mode === 'ferry') return entity.route_type === 4;
+      return false;
+    });
+  });
+}
+
+/**
+ * Gets a human-readable effect label
+ */
+export function getEffectLabel(effect: string | undefined): string {
+  if (!effect) return 'Update';
+  
+  switch (effect) {
+    case 'DETOUR': return 'Detour';
+    case 'STOP_MOVED': return 'Stop Moved';
+    case 'OTHER_EFFECT': return 'Service Change';
+    case 'MODIFIED_SERVICE': return 'Modified Service';
+    case 'NO_SERVICE': return 'No Service';
+    case 'REDUCED_SERVICE': return 'Reduced Service';
+    case 'SIGNIFICANT_DELAYS': return 'Significant Delays';
+    case 'ADDITIONAL_SERVICE': return 'Additional Service';
+    default: return effect.replace(/_/g, ' ');
+  }
+}
+
+/**
+ * Formats a timestamp to a human-readable date
+ */
+export function formatAlertDate(timestamp: number | undefined): string {
+  if (!timestamp) return 'Unknown';
+  
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleDateString('en-NZ', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric'
+  });
 }

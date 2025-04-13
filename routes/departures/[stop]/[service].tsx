@@ -1,4 +1,4 @@
-// islands/DepartureBoard.tsx";
+// routes/[stop]/[service].tsx";
 import DepartureBoard from "../../../islands/DepartureBoard.tsx";
 import { getDepartureBoard, filterDepartures } from "../../../utils/metlink.ts";
 
