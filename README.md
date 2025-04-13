@@ -47,6 +47,7 @@ A Deno Fresh application that displays real-time bus timetables and service aler
 │   ├── DepartureRow.tsx    # Single departure row component
 │   └── Navigation.tsx      # Navigation bar component
 ├── islands/                # Interactive components (client-side hydrated)
+│   ├── BusStopMap.tsx      # Map of the bus stops for reference
 │   ├── DepartureBoard.tsx  # Real-time departure board 
 │   └── ServiceAlerts.tsx   # Service alerts with filtering
 ├── routes/                 # Application routes
@@ -54,9 +55,10 @@ A Deno Fresh application that displays real-time bus timetables and service aler
 │   ├── service-alerts.tsx  # Service alerts page
 │   ├── api/
 │   │   ├── alerts.ts       # API endpoint for service alerts
-│   │   └── departures.ts   # API endpoint for departures
+│   │   ├── departures.ts   # API endpoint for departures
+│   │   └── stops.ts        # API endpoint for stops
 │   └── departures/
-│       ├── index.tsx       # Departures redirect handler
+│       ├── [stop].tsx      # Departure page for specific stop
 │       └── [stop]/
 │           └── [service].tsx # Departure page for specific stop/service
 └── utils/                  # Utility functions
