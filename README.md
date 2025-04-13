@@ -85,9 +85,10 @@ A Deno Fresh application that displays real-time bus timetables and service aler
 
 This application uses the Metlink API to fetch real-time data. You'll need to obtain an API key from the [Metlink Developer Portal](https://opendata.metlink.org.nz/).
 
-The app utilizes two main API endpoints:
+The app utilizes three main API endpoints:
 - `https://api.opendata.metlink.org.nz/v1/stop-predictions` - For real-time departures
 - `https://api.opendata.metlink.org.nz/v1/gtfs-rt/servicealerts` - For service alerts
+- `https://api.opendata.metlink.org.nz/v1/gtfs/stops` - For real-time departures
 
 ## Customization
 
